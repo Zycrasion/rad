@@ -4,5 +4,5 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-glfw = "0.55.0"
-glow = "0.13.1"
+glium = "0.34.0"
+winit = "0.29.15"
