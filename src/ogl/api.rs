@@ -3,17 +3,18 @@ use std::{collections::HashMap, fs::File, hash::Hash, io::Write, thread, time::{
 use glium::{backend::glutin::{self, SimpleWindowBuilder}, glutin::{config::{self, ConfigTemplateBuilder}, surface::WindowSurface}, Display, Surface};
 use winit::{dpi::{PhysicalSize, Size}, event::{Event, WindowEvent}, event_loop::{self, EventLoop, EventLoopBuilder, EventLoopWindowTarget}, window::{Window, WindowBuilder, WindowId}};
 use glium::glutin::prelude::*;
-use crate::{ControlFlow, GameManager, InputAction, Key, RenderAPI};
+use crate::{Assets, GameManager, ogl::OGLMesh, RenderAPI};
 
 const API_NAME : &str = "OpenGL4";
 
 pub struct OpenGL
 {
-    event_loop : Option<EventLoop<()>>,
-    window : Window,
-    display : Display<WindowSurface>,
-    last_frame : Instant,
-    target_frame_rate : f64
+    pub(crate) event_loop : Option<EventLoop<()>>,
+    pub(crate) window : Window,
+    pub(crate) display : Display<WindowSurface>,
+    pub(crate) last_frame : Instant,
+    pub(crate) target_frame_rate : f64,
+    pub(crate) meshes : Assets<OGLMesh>
 }
 
 impl OpenGL
@@ -29,7 +30,8 @@ impl OpenGL
                 {
                     self.window.request_redraw();
                 }
-            },``
+                target.set_control_flow(event_loop::ControlFlow::Poll);
+            },
             _ => {}
         }
     }
@@ -49,7 +51,7 @@ impl OpenGL
 
     fn update(&mut self, manager : &mut GameManager, delta_time : f64)
     {
-
+        manager.step();
     }
 
     fn _window_event(&mut self, target : &EventLoopWindowTarget<()>, _window_id : WindowId, event : WindowEvent, manager : &mut GameManager)
@@ -62,10 +64,12 @@ impl OpenGL
             },
             WindowEvent::CloseRequested =>
             {
+                self.log_debug("Close Requested");
                 target.exit()
             },
             WindowEvent::Resized(size) =>
             {
+                self.log_debug("Viewport Resized");
                 self.display.resize(size.into())
             },
             _ => {}
@@ -103,11 +107,13 @@ impl RenderAPI for OpenGL
             window,
             display,
             last_frame : Instant::now(),
-            target_frame_rate : 60.
+            target_frame_rate : 60.,
+            meshes : Assets::new()
         }
     }
 
     fn take_control(mut self, mut manager : GameManager) {
+        self.log_debug("Main Event Loop Started");
         let event_loop = self.event_loop.take().unwrap();
         event_loop.run(move |event, target|
         {
@@ -127,5 +133,10 @@ impl RenderAPI for OpenGL
     #[cfg(debug_assertions)]
     fn log_debug(&self, message : &str) {
         println!("(DEBUG)[{}]: {}", API_NAME, message)
+    }
+    
+    fn create_mesh(&mut self, mesh_builder : crate::MeshBuilder) -> crate::AssetHandle {
+        let mesh = OGLMesh::new(&self, mesh_builder).unwrap();
+        self.meshes.add_asset(mesh)
     }
 }

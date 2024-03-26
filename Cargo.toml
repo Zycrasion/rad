@@ -4,5 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+bevy_ecs = "0.13.1"
 glium = "0.34.0"
+prospect-obj = { git = "https://github.com/Zycrasion/prospect-obj.git", version = "0.3.2" }
+vecto-rs = { git = "https://github.com/Zycrasion/vecto-rs", version = "2.3.0", features = ["f64"] }
 winit = "0.29.15"
