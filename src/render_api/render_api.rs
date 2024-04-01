@@ -23,6 +23,8 @@ pub trait RenderAPI
 {
     fn init_with_window(options : WindowOptions) -> Self;
     fn take_control(self, manager : GameManager);
+
+    fn inject_systems(&self, manager : &mut GameManager);
     
     fn log_error(&self, message : &str);
     fn log_debug(&self, message : &str);
