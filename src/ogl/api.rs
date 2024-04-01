@@ -1,9 +1,11 @@
-use std::{collections::HashMap, fs::File, hash::Hash, io::Write, thread, time::{Duration, Instant}};
+use std::{collections::HashMap, fs::File, hash::Hash, io::Write, rc::Rc, sync::Mutex, thread, time::{Duration, Instant}};
 
-use glium::{backend::glutin::{self, SimpleWindowBuilder}, glutin::{config::{self, ConfigTemplateBuilder}, surface::WindowSurface}, Display, Surface};
+use bevy_ecs::{query::QueryState, system::{Query, Resource}};
+use glium::{backend::glutin::{self, SimpleWindowBuilder}, glutin::{config::{self, ConfigTemplateBuilder}, surface::WindowSurface}, program, Display, Program, Surface};
+use vecto_rs::linear::Mat4;
 use winit::{dpi::{PhysicalSize, Size}, event::{Event, WindowEvent}, event_loop::{self, EventLoop, EventLoopBuilder, EventLoopWindowTarget}, window::{Window, WindowBuilder, WindowId}};
 use glium::glutin::prelude::*;
-use crate::{Assets, GameManager, ogl::OGLMesh, RenderAPI};
+use crate::{ogl::OGLMesh, Assets, GameManager, Mesh, RenderAPI};
 
 const API_NAME : &str = "OpenGL4";
 
@@ -14,7 +16,10 @@ pub struct OpenGL
     pub(crate) display : Display<WindowSurface>,
     pub(crate) last_frame : Instant,
     pub(crate) target_frame_rate : f64,
-    pub(crate) meshes : Assets<OGLMesh>
+
+    pub(crate) meshes : Assets<OGLMesh>,
+
+    pub(crate) default_program : Program,
 }
 
 impl OpenGL
@@ -46,6 +51,26 @@ impl OpenGL
     {
         let mut target = self.display.draw();
         target.clear_color(0.1, 0.,  0.1, 1.0);
+
+        let mut meshes : QueryState<&Mesh> = manager.world.query();
+
+        for mesh_component in meshes.iter(&manager.world)
+        {
+            let mesh = self.meshes.get_asset(&mesh_component.handle);
+
+            if mesh.is_none() {self.log_debug("Invalid Mesh Handle"); continue;}
+
+            let mesh = mesh.unwrap();
+
+            let result = mesh.draw(&mut target, &self.default_program);
+
+            if result.is_err()
+            {
+                self.log_error(&format!("glium::DrawError - {}", result.unwrap_err()))
+            }
+
+        }
+
         target.finish().unwrap();
     }
 
@@ -101,6 +126,38 @@ impl RenderAPI for OpenGL
             .with_title(&options.title)
             .build(&event_loop);
 
+        let default_program = program!(
+            &display,
+            100 => {
+                vertex : "
+                    #version 100
+
+                    uniform lowp mat4 projection;
+
+                    attribute lowp vec3 position;
+                    attribute lowp vec3 normal;
+                    attribute lowp vec2 uv;
+
+                    varying lowp vec3 vert_colour;
+
+                    void main()
+                    {
+                        gl_Position = vec4(position, 1.0) * projection;
+                        vert_colour = normal;
+                    }
+                ",
+                fragment : "
+                    #version 100
+
+                    varying lowp vec3 vert_colour;
+                    void main()
+                    {
+                        gl_FragColor = vec4(vert_colour, 1.0);
+                    }
+                ",
+            }
+        ).unwrap();
+
         Self
         {
             event_loop : Some(event_loop),
@@ -108,8 +165,13 @@ impl RenderAPI for OpenGL
             display,
             last_frame : Instant::now(),
             target_frame_rate : 60.,
-            meshes : Assets::new()
+            meshes : Assets::new(),
+            default_program
         }
+    }
+
+    fn inject_systems(&self, manager : &mut GameManager) {
+        
     }
 
     fn take_control(mut self, mut manager : GameManager) {
