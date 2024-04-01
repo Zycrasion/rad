@@ -46,9 +46,3 @@ impl MeshBuilder {
         }
     }
 }
-
-#[derive(Component)]
-pub struct Mesh {
-    pub(crate) handle: AssetHandle,
-}
-
