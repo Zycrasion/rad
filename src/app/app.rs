@@ -5,6 +5,7 @@ use bevy_ecs::{
     schedule::{IntoSystemConfigs, Schedule, ScheduleLabel},
     world::{EntityWorldMut, World},
 };
+use prospect_obj::Object;
 
 use crate::*;
 
@@ -30,26 +31,6 @@ pub enum ScheduleTimes {
 pub use ScheduleTimes::*;
 
 impl GameManager {
-    // pub fn key_press(&mut self, key : Key, input_action : InputAction) -> ControlFlow
-    // {
-    //     if key == Key::Escape
-    //     {
-    //         return ControlFlow::Exit
-    //     }
-
-    //     ControlFlow::Continue
-    // }
-
-    // pub fn mouse_move(&mut self, x : f64, y : f64)
-    // {
-
-    // }
-
-    // pub fn mouse_button_down(&mut self, button : MouseButton, action : InputAction)
-    // {
-
-    // }
-
     pub fn step(&mut self) {
         self.schedules
             .get_mut(&Update)
@@ -97,5 +78,10 @@ impl<T: RenderAPI> App<T> {
 
     pub fn run(mut self) {
         self.backend.take_control(self.game);
+    }
+
+    pub fn register_mesh(&mut self, builder : MeshBuilder) -> AssetHandle
+    {
+        self.backend.create_mesh(builder)
     }
 }
