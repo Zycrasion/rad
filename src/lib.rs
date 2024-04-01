@@ -11,3 +11,4 @@ pub use vecto_rs::*;
 import!(app);
 import!(ogl);
 import!(render_api);
+import!(components);
