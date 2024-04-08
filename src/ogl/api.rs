@@ -5,7 +5,7 @@ use glium::{backend::glutin::{self, SimpleWindowBuilder}, glutin::{config::{self
 use vecto_rs::linear::Mat4;
 use winit::{dpi::{PhysicalSize, Size}, event::{Event, WindowEvent}, event_loop::{self, EventLoop, EventLoopBuilder, EventLoopWindowTarget}, window::{Window, WindowBuilder, WindowId}};
 use glium::glutin::prelude::*;
-use crate::{ogl::OGLMesh, Assets, GameManager, Mesh, RenderAPI};
+use crate::{ogl::OGLMesh, Assets, GameManager, Mesh, RenderAPI, Transform};
 
 const API_NAME : &str = "OpenGL4";
 
@@ -50,11 +50,11 @@ impl OpenGL
     fn draw(&mut self, manager : &mut GameManager, delta_time : f64)
     {
         let mut target = self.display.draw();
-        target.clear_color(0.1, 0.,  0.1, 1.0);
+        target.clear_color_and_depth((0.1, 0.,  0.1, 1.0), 1.0);
 
-        let mut meshes : QueryState<&Mesh> = manager.world.query();
+        let mut meshes : QueryState<(&Mesh, &Transform)> = manager.world.query();
 
-        for mesh_component in meshes.iter(&manager.world)
+        for (mesh_component, transform) in meshes.iter(&manager.world)
         {
             let mesh = self.meshes.get_asset(&mesh_component.handle);
 
@@ -62,7 +62,7 @@ impl OpenGL
 
             let mesh = mesh.unwrap();
 
-            let result = mesh.draw(&mut target, &self.default_program);
+            let result = mesh.draw(&mut target, &self.default_program, transform);
 
             if result.is_err()
             {
@@ -132,7 +132,7 @@ impl RenderAPI for OpenGL
                 vertex : "
                     #version 100
 
-                    uniform lowp mat4 projection;
+                    uniform lowp mat4 model;
 
                     attribute lowp vec3 position;
                     attribute lowp vec3 normal;
@@ -142,7 +142,7 @@ impl RenderAPI for OpenGL
 
                     void main()
                     {
-                        gl_Position = vec4(position, 1.0) * projection;
+                        gl_Position = vec4(position, 1.0) * model;
                         vert_colour = normal;
                     }
                 ",

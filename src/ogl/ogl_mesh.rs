@@ -1,6 +1,6 @@
-use glium::{backend::Facade, index::PrimitiveType, uniform, vertex, Frame, IndexBuffer, Surface};
+use glium::{backend::Facade, index::PrimitiveType, uniform, vertex, Depth, DepthTest, DrawParameters, Frame, IndexBuffer, Surface};
 
-use crate::{MeshBuilder, OpenGL, Vertex};
+use crate::{MeshBuilder, OpenGL, Transform, Vertex};
 
 pub(super) struct OGLMesh {
     vertex_buffer: glium::VertexBuffer<Vertex>,
@@ -31,8 +31,24 @@ impl OGLMesh {
         })
     }
 
-    pub fn draw(&self, context : &mut Frame, program : &glium::Program, uniforms : impl Uniform) -> Result<(), glium::DrawError>
+    pub fn ogl_default_draw_params() -> DrawParameters<'static>
     {
-        context.draw(&self.vertex_buffer, &self.index_buffer, program, &uniform! {}, &Default::default())
+        DrawParameters
+        {
+            depth : Depth
+            {
+                test: DepthTest::IfLess,
+                write: true,
+                ..Default::default()
+            },
+            ..Default::default()
+        }
+    }
+
+    pub fn draw(&self, context : &mut Frame, program : &glium::Program, transform : &Transform) -> Result<(), glium::DrawError>
+    {
+        context.draw(&self.vertex_buffer, &self.index_buffer, program, &uniform! {
+            model : transform.as_uniform()
+        }, &Self::ogl_default_draw_params())
     }
 }

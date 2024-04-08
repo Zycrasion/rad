@@ -21,8 +21,6 @@ pub struct MeshBuilder {
 
 impl MeshBuilder {
     pub fn from_obj<S: AsRef<str>>(contents: S) -> MeshBuilder {
-        let bytes: Vec<u8> = contents.as_ref().bytes().collect();
-        let buffer = BufReader::new(bytes.as_slice());
         let mut obj = prospect_obj::parse_obj(contents);
 
         let mut verts = Vec::with_capacity(obj.vertices.len());
