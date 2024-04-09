@@ -28,9 +28,26 @@ impl Transform {
         matrix.transpose()
     }
 
+    pub fn into_matrix_inverse(&self) -> Mat4
+    {
+        let mut matrix = Mat4::identity();
+        matrix.translate(self.position * -1.);
+        matrix.rotate(self.rotation.x, Vector::new3(-1., 0. , 0.));
+        matrix.rotate(self.rotation.y, Vector::new3(0., -1. , 0.));
+        matrix.rotate(self.rotation.z, Vector::new3(0., 0. , -1.));
+        matrix.transpose()
+    }
+
     pub fn as_uniform(&self) -> [[f32; 4]; 4]
     {
         let contents = self.into_matrix().get_contents();
+        // I Couldn't Think of any other Peformant Ways 
+        unsafe { std::mem::transmute(contents) }
+    }
+
+    pub fn as_uniform_inverse(&self) -> [[f32; 4]; 4]
+    {
+        let contents = self.into_matrix_inverse().get_contents();
         // I Couldn't Think of any other Peformant Ways 
         unsafe { std::mem::transmute(contents) }
     }

@@ -62,6 +62,7 @@ impl OpenGL
         for (camera, view) in cameras.iter(&manager.world)
         {
             let camera_projection_matrix = camera.generate_projection_matrix(window_size);
+            let camera_eye = view.as_uniform_inverse();
             for (mesh_component, transform) in meshes.iter(&manager.world)
             {
                 let mesh = self.meshes.get_asset(&mesh_component.handle);
@@ -70,7 +71,7 @@ impl OpenGL
     
                 let mesh = mesh.unwrap();
     
-                let result = mesh.draw(&mut target, &self.default_program, transform, camera_projection_matrix);
+                let result = mesh.draw(&mut target, &self.default_program, transform, camera_projection_matrix, camera_eye);
     
                 if result.is_err()
                 {
@@ -142,6 +143,7 @@ impl RenderAPI for OpenGL
                     #version 100
 
                     uniform lowp mat4 model;
+                    uniform lowp mat4 view;
                     uniform lowp mat4 projection;
 
                     attribute lowp vec3 position;
@@ -152,7 +154,7 @@ impl RenderAPI for OpenGL
 
                     void main()
                     {
-                        gl_Position = projection * (model * vec4(position, 1.0));
+                        gl_Position = projection * (view * model * vec4(position, 1.0));
                         vert_colour = normal;
                     }
                 ",

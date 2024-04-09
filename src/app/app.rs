@@ -15,7 +15,7 @@ pub struct DeltaTime {
 }
 
 pub struct GameManager {
-    pub(crate) world: World,
+    pub world: World,
     pub(crate) schedules: HashMap<ScheduleTimes, Schedule>,
 }
 
