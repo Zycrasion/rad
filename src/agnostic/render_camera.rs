@@ -3,10 +3,31 @@ use vecto_rs::linear::Mat4;
 
 use crate::Transform;
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct BakedCameraInformation
+{
+    pub params : CameraParameters,
+    pub target : RenderTarget,
+    pub view : [[f32; 4]; 4],
+    pub projection : [[f32; 4]; 4]
+}
+
+#[derive(Clone, Copy, PartialEq)]
 pub enum RenderTarget
 {
-    Viewport
+    Window
+}
+
+#[derive(Clone, Copy)]
+pub struct CameraParameters
+{
+    pub clear_colour : Option<(f32, f32, f32, f32)>,
+}
+
+impl Default for CameraParameters
+{
+    fn default() -> Self {
+        Self { clear_colour: Some((0., 0., 0., 1.)) }
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, PartialOrd)]
@@ -24,7 +45,8 @@ pub enum ProjectionType
 pub struct Camera
 {
     pub render_target : RenderTarget,
-    pub projection_type : ProjectionType
+    pub projection_type : ProjectionType,
+    pub draw_params : CameraParameters
 }
 
 impl Camera
@@ -39,8 +61,9 @@ impl Camera
     {
         Self
         {
-            render_target: RenderTarget::Viewport,
+            render_target: RenderTarget::Window,
             projection_type: ProjectionType::Perspective { fov, near, far },
+            draw_params : Default::default()
         }
     }
 
@@ -54,6 +77,17 @@ impl Camera
         };
 
         unsafe { std::mem::transmute(matrix.transpose().get_contents()) }
+    }
+
+    pub fn bake(&self, eye : Option<&Transform>, window_size : (u32, u32)) -> BakedCameraInformation
+    {
+        BakedCameraInformation
+        {
+            params: self.draw_params,
+            target: self.render_target,
+            view: eye.unwrap_or(&Transform::new()).as_uniform_inverse(),
+            projection: self.generate_projection_matrix(window_size),
+        }
     }
 }
 
