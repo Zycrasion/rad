@@ -31,7 +31,7 @@ impl OpenGL
             Event::WindowEvent { window_id, event } => self._window_event(target, window_id, event, manager),
             Event::AboutToWait => 
             {
-                if self.delta_time() > 1. / self.target_frame_rate
+                if self.delta_time() > 1. / self.target_frame_rate && !manager.finished_running()
                 {
                     self.window.request_redraw();
                 }
@@ -47,8 +47,14 @@ impl OpenGL
         self.last_frame.elapsed().as_secs_f64()
     }
 
+    fn update(&mut self, manager : &mut GameManager, delta_time : f64)
+    {
+        manager.step_update();
+    }
+
     fn draw(&mut self, manager : &mut GameManager, delta_time : f64)
     {
+        manager.step_draw();
         let mut target = self.display.draw();
         target.clear_color_and_depth((0.1, 0.,  0.1, 1.0), 1.0);
 
@@ -84,11 +90,6 @@ impl OpenGL
         target.finish().unwrap();
     }
 
-    fn update(&mut self, manager : &mut GameManager, delta_time : f64)
-    {
-        manager.step();
-    }
-
     fn _window_event(&mut self, target : &EventLoopWindowTarget<()>, _window_id : WindowId, event : WindowEvent, manager : &mut GameManager)
     {
         match event
@@ -100,6 +101,7 @@ impl OpenGL
             WindowEvent::CloseRequested =>
             {
                 self.log_debug("Close Requested");
+                manager.end();
                 target.exit()
             },
             WindowEvent::Resized(size) =>
@@ -188,6 +190,7 @@ impl RenderAPI for OpenGL
 
     fn take_control(mut self, mut manager : GameManager) {
         self.log_debug("Main Event Loop Started");
+        manager.run_startup();
         let event_loop = self.event_loop.take().unwrap();
         event_loop.run(move |event, target|
         {
