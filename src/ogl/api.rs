@@ -5,7 +5,7 @@ use glium::{backend::glutin::{self, SimpleWindowBuilder}, glutin::{config::{self
 use vecto_rs::linear::Mat4;
 use winit::{dpi::{PhysicalSize, Size}, event::{Event, WindowEvent}, event_loop::{self, EventLoop, EventLoopBuilder, EventLoopWindowTarget}, window::{Window, WindowBuilder, WindowId}};
 use glium::glutin::prelude::*;
-use crate::{ogl::OGLMesh, Assets, GameManager, Mesh, RenderAPI, Transform};
+use crate::{ogl::OGLMesh, Assets, Camera, GameManager, Mesh, RenderAPI, Transform};
 
 const API_NAME : &str = "OpenGL4";
 
@@ -52,24 +52,33 @@ impl OpenGL
         let mut target = self.display.draw();
         target.clear_color_and_depth((0.1, 0.,  0.1, 1.0), 1.0);
 
+        
+        let mut cameras : QueryState<(&Camera, &Transform)> = manager.world.query();
         let mut meshes : QueryState<(&Mesh, &Transform)> = manager.world.query();
 
-        for (mesh_component, transform) in meshes.iter(&manager.world)
+        let window_size = self.window.inner_size();
+        let window_size = (window_size.width, window_size.height);
+
+        for (camera, view) in cameras.iter(&manager.world)
         {
-            let mesh = self.meshes.get_asset(&mesh_component.handle);
-
-            if mesh.is_none() {self.log_debug("Invalid Mesh Handle"); continue;}
-
-            let mesh = mesh.unwrap();
-
-            let result = mesh.draw(&mut target, &self.default_program, transform);
-
-            if result.is_err()
+            let camera_projection_matrix = camera.generate_projection_matrix(window_size);
+            for (mesh_component, transform) in meshes.iter(&manager.world)
             {
-                self.log_error(&format!("glium::DrawError - {}", result.unwrap_err()))
+                let mesh = self.meshes.get_asset(&mesh_component.handle);
+    
+                if mesh.is_none() {self.log_debug("Invalid Mesh Handle"); continue;}
+    
+                let mesh = mesh.unwrap();
+    
+                let result = mesh.draw(&mut target, &self.default_program, transform, camera_projection_matrix);
+    
+                if result.is_err()
+                {
+                    self.log_error(&format!("glium::DrawError - {}", result.unwrap_err()))
+                }
             }
-
         }
+
 
         target.finish().unwrap();
     }
@@ -133,6 +142,7 @@ impl RenderAPI for OpenGL
                     #version 100
 
                     uniform lowp mat4 model;
+                    uniform lowp mat4 projection;
 
                     attribute lowp vec3 position;
                     attribute lowp vec3 normal;
@@ -142,7 +152,7 @@ impl RenderAPI for OpenGL
 
                     void main()
                     {
-                        gl_Position = vec4(position, 1.0) * model;
+                        gl_Position = projection * (model * vec4(position, 1.0));
                         vert_colour = normal;
                     }
                 ",

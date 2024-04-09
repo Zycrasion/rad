@@ -45,10 +45,11 @@ impl OGLMesh {
         }
     }
 
-    pub fn draw(&self, context : &mut Frame, program : &glium::Program, transform : &Transform) -> Result<(), glium::DrawError>
+    pub fn draw(&self, context : &mut Frame, program : &glium::Program, transform : &Transform, cam_projection : [[f32; 4]; 4]) -> Result<(), glium::DrawError>
     {
         context.draw(&self.vertex_buffer, &self.index_buffer, program, &uniform! {
-            model : transform.as_uniform()
+            model : transform.as_uniform(),
+            projection : cam_projection,
         }, &Self::ogl_default_draw_params())
     }
 }
