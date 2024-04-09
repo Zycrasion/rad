@@ -5,7 +5,7 @@ use glium::{backend::glutin::{self, SimpleWindowBuilder}, glutin::{config::{self
 use vecto_rs::linear::Mat4;
 use winit::{dpi::{PhysicalSize, Size}, event::{Event, WindowEvent}, event_loop::{self, EventLoop, EventLoopBuilder, EventLoopWindowTarget}, window::{Window, WindowBuilder, WindowId}};
 use glium::glutin::prelude::*;
-use crate::{ogl::OGLMesh, Assets, Camera, GameManager, Mesh, RenderAPI, Transform};
+use crate::{ogl::OGLMesh, Assets, BakedCameraInformation, Camera, GameManager, Mesh, RenderAPI, Transform};
 
 const API_NAME : &str = "OpenGL4";
 
@@ -52,37 +52,37 @@ impl OpenGL
         manager.step_update();
     }
 
-    fn draw(&mut self, manager : &mut GameManager, delta_time : f64)
+    fn draw(&mut self, manager : &mut GameManager, baked_camera : BakedCameraInformation)
     {
-        manager.step_draw();
-        let mut target = self.display.draw();
-        target.clear_color_and_depth((0.1, 0.,  0.1, 1.0), 1.0);
+        let mut target = match baked_camera.target
+        {
+            crate::RenderTarget::Window => self.display.draw(),
+        };
+
+        if let Some(camera_clear) = baked_camera.params.clear_colour
+        {
+            target.clear_color_and_depth(camera_clear, 1.0);
+        } else
+        {
+            target.clear_depth(1.0);
+        }
 
         
-        let mut cameras : QueryState<(&Camera, &Transform)> = manager.world.query();
         let mut meshes : QueryState<(&Mesh, &Transform)> = manager.world.query();
 
-        let window_size = self.window.inner_size();
-        let window_size = (window_size.width, window_size.height);
-
-        for (camera, view) in cameras.iter(&manager.world)
+        for (mesh_component, transform) in meshes.iter(&manager.world)
         {
-            let camera_projection_matrix = camera.generate_projection_matrix(window_size);
-            let camera_eye = view.as_uniform_inverse();
-            for (mesh_component, transform) in meshes.iter(&manager.world)
+            let mesh = self.meshes.get_asset(&mesh_component.handle);
+
+            if mesh.is_none() {self.log_debug("Invalid Mesh Handle"); continue;}
+
+            let mesh = mesh.unwrap();
+
+            let result = mesh.draw(&mut target, &self.default_program, transform, &baked_camera);
+
+            if result.is_err()
             {
-                let mesh = self.meshes.get_asset(&mesh_component.handle);
-    
-                if mesh.is_none() {self.log_debug("Invalid Mesh Handle"); continue;}
-    
-                let mesh = mesh.unwrap();
-    
-                let result = mesh.draw(&mut target, &self.default_program, transform, camera_projection_matrix, camera_eye);
-    
-                if result.is_err()
-                {
-                    self.log_error(&format!("glium::DrawError - {}", result.unwrap_err()))
-                }
+                self.log_error(&format!("glium::DrawError - {}", result.unwrap_err()))
             }
         }
 
@@ -123,7 +123,22 @@ impl OpenGL
         let delta_time = self.delta_time();
 
         self.update(manager, delta_time);
-        self.draw(manager, delta_time);
+
+        manager.step_draw();
+        let mut cameras : QueryState<(&Camera, Option<&Transform>)> = manager.world.query();
+        let mut baked_camera_information : Vec<BakedCameraInformation> = Vec::new();
+
+        let window_size = self.window.inner_size();
+        let window_size = (window_size.width, window_size.height);
+        for (camera, eye) in cameras.iter(&manager.world)
+        {
+            baked_camera_information.push(camera.bake(eye, window_size));
+        }
+
+        for baked_camera in baked_camera_information
+        {
+            self.draw(manager, baked_camera);
+        }
 
         self._frame_end()
     }
