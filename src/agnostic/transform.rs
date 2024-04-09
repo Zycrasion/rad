@@ -21,11 +21,11 @@ impl Transform {
     pub fn into_matrix(&self) -> Mat4
     {
         let mut matrix = Mat4::identity();
+        matrix.translate(self.position);
         matrix.rotate(self.rotation.x, Vector::new3(1., 0. , 0.));
         matrix.rotate(self.rotation.y, Vector::new3(0., 1. , 0.));
         matrix.rotate(self.rotation.z, Vector::new3(0., 0. , 1.));
-        matrix.translate(self.position);
-        matrix
+        matrix.transpose()
     }
 
     pub fn as_uniform(&self) -> [[f32; 4]; 4]
