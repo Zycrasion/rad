@@ -6,6 +6,7 @@ use std::marker::PhantomData;
 // It could use a garbage collector sorta thing, but I don't feel like that's the best way to fix it
 // I'll think about it.
 
+#[derive(Clone, Copy)]
 pub struct AssetHandle(u32, usize); // Index, Magic
 
 pub struct Assets<T>
