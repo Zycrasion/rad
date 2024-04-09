@@ -18,6 +18,14 @@ impl Transform {
         }
     }
 
+    pub fn with_position(x : f32, y : f32, z : f32) -> Self {
+        Self {
+            position: Vector::new3(x, y, z),
+            rotation: Vector::new2(0., 0.),
+            scale: 1.,
+        }
+    }
+
     pub fn into_matrix(&self) -> Mat4
     {
         let mut matrix = Mat4::identity();
@@ -25,6 +33,7 @@ impl Transform {
         matrix.rotate(self.rotation.x, Vector::new3(1., 0. , 0.));
         matrix.rotate(self.rotation.y, Vector::new3(0., 1. , 0.));
         matrix.rotate(self.rotation.z, Vector::new3(0., 0. , 1.));
+        matrix.scale(Vector4::new4(self.scale, self.scale, self.scale, 1.0));
         matrix.transpose()
     }
 
@@ -35,6 +44,7 @@ impl Transform {
         matrix.rotate(self.rotation.x, Vector::new3(-1., 0. , 0.));
         matrix.rotate(self.rotation.y, Vector::new3(0., -1. , 0.));
         matrix.rotate(self.rotation.z, Vector::new3(0., 0. , -1.));
+        matrix.scale(Vector4::new4(1./self.scale, 1./self.scale, 1./self.scale, 1.0));
         matrix.transpose()
     }
 
