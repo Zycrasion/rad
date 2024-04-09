@@ -17,6 +17,7 @@ pub struct DeltaTime {
 pub struct GameManager {
     pub world: World,
     pub(crate) schedules: HashMap<ScheduleTimes, Schedule>,
+    finished_running : bool
 }
 
 #[derive(ScheduleLabel, Default, Hash, Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
@@ -31,7 +32,29 @@ pub enum ScheduleTimes {
 pub use ScheduleTimes::*;
 
 impl GameManager {
-    pub fn step(&mut self) {
+    pub fn run_startup(&mut self) {
+        if let Some(mut startup) = self.schedules.remove(&Startup)
+        {
+            startup.run(&mut self.world);
+        }
+    }
+
+    pub fn end(&mut self) {
+        if let Some(mut end) = self.schedules.remove(&End)
+        {
+            end.run(&mut self.world);
+            self.finished_running = true;
+        }
+    }
+
+    pub fn step_draw(&mut self) {
+        self.schedules
+            .get_mut(&Draw)
+            .unwrap()
+            .run(&mut self.world);
+    }
+
+    pub fn step_update(&mut self) {
         self.schedules
             .get_mut(&Update)
             .unwrap()
@@ -49,6 +72,11 @@ impl GameManager {
     ) -> &mut Self {
         self.schedules.get_mut(&time).unwrap().add_systems(systems);
         self
+    }
+
+    pub fn finished_running(&self) -> bool
+    {
+        self.finished_running
     }
 }
 
@@ -72,6 +100,7 @@ impl<T: RenderAPI> App<T> {
             game: GameManager {
                 world: World::new(),
                 schedules,
+                finished_running : false
             },
         }
     }
