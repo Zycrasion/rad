@@ -1,6 +1,6 @@
 use glium::{backend::Facade, index::PrimitiveType, uniform, vertex, Depth, DepthTest, DrawParameters, Frame, IndexBuffer, Surface};
 
-use crate::{MeshBuilder, OpenGL, Transform, Vertex};
+use crate::{BakedCameraInformation, MeshBuilder, OpenGL, Transform, Vertex};
 
 pub(super) struct OGLMesh {
     vertex_buffer: glium::VertexBuffer<Vertex>,
@@ -45,12 +45,12 @@ impl OGLMesh {
         }
     }
 
-    pub fn draw(&self, context : &mut Frame, program : &glium::Program, transform : &Transform, cam_projection : [[f32; 4]; 4], camera_eye : [[f32; 4]; 4]) -> Result<(), glium::DrawError>
+    pub fn draw(&self, context : &mut Frame, program : &glium::Program, transform : &Transform, baked_camera : &BakedCameraInformation) -> Result<(), glium::DrawError>
     {
         context.draw(&self.vertex_buffer, &self.index_buffer, program, &uniform! {
             model : transform.as_uniform(),
-            projection : cam_projection,
-            view : camera_eye
+            projection : baked_camera.projection,
+            view : baked_camera.view
         }, &Self::ogl_default_draw_params())
     }
 }
