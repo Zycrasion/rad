@@ -5,6 +5,14 @@ use rad::*;
 #[derive(Resource)]
 pub struct Time(pub Instant);
 
+impl Time
+{
+    pub fn elapsed(&self) -> f32
+    {
+        self.0.elapsed().as_secs_f32()
+    }
+}
+
 fn main()
 {
     let mut app : App<OpenGL> = App::new();
@@ -33,7 +41,6 @@ fn move_camera(mut query : Query<(&Camera, &mut Transform)>, time : Res<Time>)
 {
     for (_, mut transform) in query.iter_mut()
     {
-        transform.position.z = time.0.elapsed().as_secs_f32().sin() * 5.;
-        println!("{}", time.0.elapsed().as_secs_f32().sin() * 5.);
+        transform.position.z = time.elapsed().sin() * 2.5 + 2.5;
     }
 }
