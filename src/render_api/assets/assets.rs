@@ -1,14 +1,17 @@
 use std::marker::PhantomData;
 
+use bevy_ecs::system::Resource;
+
 // TODO: Assets<T> won't ever shrink, need to implement a way to clean up.
 // It shouldn't be a problem if the user doesn't create a ton of Assets
 // Although if you leave something running it might start a leak
 // It could use a garbage collector sorta thing, but I don't feel like that's the best way to fix it
 // I'll think about it.
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct AssetHandle(u32, usize); // Index, Magic
 
+#[derive(Resource)]
 pub struct Assets<T>
 {
     assets : Vec<Option<(u32, T)>>,

@@ -2,7 +2,7 @@ use bevy_ecs::component::Component;
 use glium::framebuffer::StencilRenderBuffer;
 use vecto_rs::linear::{Mat4, Vector, Vector4, VectorTrait};
 
-#[derive(Component)]
+#[derive(Component, Clone, Copy)]
 pub struct Transform {
     pub position: Vector,
     pub rotation: Vector,

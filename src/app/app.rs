@@ -92,16 +92,23 @@ impl<T: RenderAPI> App<T> {
         for time in vec![Startup, Update, Draw, End] {
             schedules.insert(time, Schedule::new(time));
         }
+
+        let mut game = GameManager {
+            world: World::new(),
+            schedules,
+            finished_running : false
+        };
+
+        let backend = T::init_with_window(WindowOptions {
+            size: (480, 480),
+            title: String::from("RenderAPI Test"),
+        });
+
+        backend.inject_systems(&mut game);
+
         App {
-            backend: T::init_with_window(WindowOptions {
-                size: (480, 480),
-                title: String::from("RenderAPI Test"),
-            }),
-            game: GameManager {
-                world: World::new(),
-                schedules,
-                finished_running : false
-            },
+            backend,
+            game,
         }
     }
 

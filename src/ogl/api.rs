@@ -1,11 +1,11 @@
 use std::{collections::HashMap, fs::File, hash::Hash, io::Write, rc::Rc, sync::Mutex, thread, time::{Duration, Instant}};
 
 use bevy_ecs::{query::QueryState, system::{Query, Resource}};
-use glium::{backend::glutin::{self, SimpleWindowBuilder}, glutin::{config::{self, ConfigTemplateBuilder}, surface::WindowSurface}, program, Display, Program, Surface};
+use glium::{backend::glutin::{self, SimpleWindowBuilder}, glutin::{config::{self, ConfigTemplateBuilder}, surface::WindowSurface}, program, Depth, DepthTest, Display, DrawParameters, Program, Surface};
 use vecto_rs::linear::Mat4;
 use winit::{dpi::{PhysicalSize, Size}, event::{Event, WindowEvent}, event_loop::{self, EventLoop, EventLoopBuilder, EventLoopWindowTarget}, window::{Window, WindowBuilder, WindowId}};
 use glium::glutin::prelude::*;
-use crate::{ogl::OGLMesh, Assets, BakedCameraInformation, Camera, GameManager, Mesh, RenderAPI, Transform};
+use crate::{ogl::OGLMesh, Assets, BakedCameraInformation, BakedLight, Camera, DefaultMaterial, GameManager, Light, Mesh, RenderAPI, ScheduleTimes, Transform};
 
 const API_NAME : &str = "OpenGL4";
 
@@ -18,12 +18,25 @@ pub struct OpenGL
     pub(crate) target_frame_rate : f64,
 
     pub(crate) meshes : Assets<OGLMesh>,
-
-    pub(crate) default_program : Program,
+    pub(crate) shaders : Assets<Program>,
 }
 
 impl OpenGL
 {
+    pub fn default_draw_params() -> DrawParameters<'static>
+    {
+        DrawParameters
+        {
+            depth : Depth
+            {
+                test: DepthTest::IfLess,
+                write: true,
+                ..Default::default()
+            },
+            ..Default::default()
+        }
+    }
+
     fn _event_loop(&mut self, event : Event<()>, target : &EventLoopWindowTarget<()> ,manager : &mut GameManager)
     {
         match event
@@ -68,9 +81,9 @@ impl OpenGL
         }
 
         
-        let mut meshes : QueryState<(&Mesh, &Transform)> = manager.world.query();
+        let mut meshes : QueryState<(&Mesh, &Transform, &Material<_>)> = manager.world.query();
 
-        for (mesh_component, transform) in meshes.iter(&manager.world)
+        for (mesh_component, transform, material) in meshes.iter(&manager.world)
         {
             let mesh = self.meshes.get_asset(&mesh_component.handle);
 
@@ -78,7 +91,7 @@ impl OpenGL
 
             let mesh = mesh.unwrap();
 
-            let result = mesh.draw(&mut target, &self.default_program, transform, &baked_camera);
+            let result = mesh.draw(&mut target, transform, &baked_camera, material, &self.shaders);
 
             if result.is_err()
             {
@@ -125,6 +138,19 @@ impl OpenGL
         self.update(manager, delta_time);
 
         manager.step_draw();
+        
+        let mut lights_query : QueryState<(&Light, &Transform)> = manager.world.query();
+        let mut lights = vec![];
+        
+        for (light, transform) in lights_query.iter(&manager.world)
+        {
+            lights.push(BakedLight
+            {
+                transform: *transform,
+                light: *light,
+            })
+        } 
+
         let mut cameras : QueryState<(&Camera, Option<&Transform>)> = manager.world.query();
         let mut baked_camera_information : Vec<BakedCameraInformation> = Vec::new();
 
@@ -132,7 +158,7 @@ impl OpenGL
         let window_size = (window_size.width, window_size.height);
         for (camera, eye) in cameras.iter(&manager.world)
         {
-            baked_camera_information.push(camera.bake(eye, window_size));
+            baked_camera_information.push(camera.bake(eye, window_size, &lights));
         }
 
         for baked_camera in baked_camera_information
@@ -153,39 +179,8 @@ impl RenderAPI for OpenGL
             .with_title(&options.title)
             .build(&event_loop);
 
-        let default_program = program!(
-            &display,
-            100 => {
-                vertex : "
-                    #version 100
-
-                    uniform lowp mat4 model;
-                    uniform lowp mat4 view;
-                    uniform lowp mat4 projection;
-
-                    attribute lowp vec3 position;
-                    attribute lowp vec3 normal;
-                    attribute lowp vec2 uv;
-
-                    varying lowp vec3 vert_colour;
-
-                    void main()
-                    {
-                        gl_Position = projection * (view * model * vec4(position, 1.0));
-                        vert_colour = normal;
-                    }
-                ",
-                fragment : "
-                    #version 100
-
-                    varying lowp vec3 vert_colour;
-                    void main()
-                    {
-                        gl_FragColor = vec4(vert_colour, 1.0);
-                    }
-                ",
-            }
-        ).unwrap();
+        let mut shaders = Assets::new();
+        DefaultMaterial::glium_register(&display, &mut shaders);
 
         Self
         {
@@ -194,13 +189,14 @@ impl RenderAPI for OpenGL
             display,
             last_frame : Instant::now(),
             target_frame_rate : 60.,
+
             meshes : Assets::new(),
-            default_program
+            shaders,
         }
     }
 
     fn inject_systems(&self, manager : &mut GameManager) {
-        
+        manager.add_systems(&ScheduleTimes::Startup, DefaultMaterial::startup);
     }
 
     fn take_control(mut self, mut manager : GameManager) {

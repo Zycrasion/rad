@@ -1,14 +1,15 @@
-use bevy_ecs::{bundle::Bundle, component::Component};
+use bevy_ecs::{bundle::Bundle, component::Component, query::QueryState, system::Query, world::World};
 use vecto_rs::linear::Mat4;
 
-use crate::Transform;
+use crate::{BakedLight, Light, Transform};
 
 pub struct BakedCameraInformation
 {
     pub params : CameraParameters,
     pub target : RenderTarget,
     pub view : [[f32; 4]; 4],
-    pub projection : [[f32; 4]; 4]
+    pub projection : [[f32; 4]; 4],
+    pub lights : Vec<BakedLight>,
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -79,14 +80,17 @@ impl Camera
         unsafe { std::mem::transmute(matrix.transpose().get_contents()) }
     }
 
-    pub fn bake(&self, eye : Option<&Transform>, window_size : (u32, u32)) -> BakedCameraInformation
+    pub fn bake(&self, eye : Option<&Transform>, window_size : (u32, u32), lights : &Vec<BakedLight>) -> BakedCameraInformation
     {
+
+
         BakedCameraInformation
         {
             params: self.draw_params,
             target: self.render_target,
             view: eye.unwrap_or(&Transform::new()).as_uniform_inverse(),
             projection: self.generate_projection_matrix(window_size),
+            lights : lights.clone()
         }
     }
 }
