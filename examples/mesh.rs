@@ -23,38 +23,34 @@ pub struct RainbowLight;
 
 fn main()
 {
-    let mut app : App<OpenGL> = App::new();
+    let mut app = App::new();
 
-    let mesh = Mesh{ handle:app.register_mesh(MeshBuilder::from_obj(include_str!("res/monkey.obj"))) };
+    let mesh = app.register_mesh(MeshBuilder::from_obj(include_str!("res/monkey.obj")));
     
     // Monkeys
-    app.game.spawn((DefaultMaterial::new(Colour(0.1, 0.2, 0.3)), mesh.clone(), Transform::with_position(0., -2., 5.5), Rotate(0.05)));
+    app.spawn((DefaultMaterial::new(Colour(0.1, 0.2, 0.3)), mesh.clone(), Transform::with_position(0., -2., 5.5), Rotate(0.05)));
     
     for x in 0..=100
     {
-        app.game.spawn((DefaultMaterial::new(Colour(x as f32/100., 0., 0.3)), mesh.clone(), Transform::with_position(x as f32, 0., 5.5 + x as f32), Rotate(0.1)));
+        app.spawn((DefaultMaterial::new(Colour(x as f32/100., 0., 0.3)), mesh.clone(), Transform::with_position(x as f32, 0., 5.5 + x as f32), Rotate(0.1)));
     }
 
-    app.game.spawn((DefaultMaterial::new(Colour(0.1, 0.2, 0.3)), mesh.clone(), Transform::with_position(0., 2., 5.5), Rotate(0.2)));
+    app.spawn((DefaultMaterial::new(Colour(0.1, 0.2, 0.3)), mesh.clone(), Transform::with_position(0., 2., 5.5), Rotate(0.2)));
 
-    app.game.spawn((DefaultMaterial::new(Colour(0.1, 0.2, 0.3)), mesh.clone(), Transform::new(), Rotate((0.05 + 0.1 + 0.2) / 3.), MoveInCircle(Vector::new3(-3., 0., 5.5), 1., 3.1)));
-
-    app.game.spawn((DefaultMaterial {shading_enabled : false, ..Default::default()}, Light {colour : Colour::WHITE}, mesh.clone(), Transform::with_position(-3., 2., 5.5)));
+    app.spawn((DefaultMaterial {shading_enabled : false, ..Default::default()}, Light {colour : Colour::WHITE}, mesh.clone(), Transform::with_position(-3., 2., 5.5)));
     
     // Camera
     let mut cam_bundle = CameraBundle::new();
     cam_bundle.camera.draw_params.clear_colour = Some((0., 0., 0.2, 1.));
-    app.game.spawn((MoveInCircle(Vector::new2(0., 0.), 2.5, 0.), cam_bundle));
+    app.spawn((MoveInCircle(Vector::new2(0., 0.), 2.5, 0.), cam_bundle));
 
     // To Track Elapsed Time from Start
-    app.game.world.insert_resource(Time(Instant::now()));
+    app.world.insert_resource(Time(Instant::now()));
 
     // Update Mesh and Camera Positions
-    app.game.add_systems(&ScheduleTimes::Update, (rotating, move_in_circle));
+    app.add_systems(ScheduleTimes::Update, (rotating, move_in_circle));
 
     app.run();
-
-    println!("Exiting App");
 }
 
 fn rotating(mut query : Query<(&Rotate, &mut Transform)>)
@@ -74,5 +70,3 @@ fn move_in_circle(mut query : Query<(&MoveInCircle, &mut Transform)>, time : Res
         transform.position.y = circle_params.0.y;
     }
 }
-
-fn change_light_colour(mut query : Query<(&mut Material)>)

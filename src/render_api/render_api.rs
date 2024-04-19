@@ -1,15 +1,10 @@
 use bevy_ecs::component::Component;
+use winit::{event_loop::EventLoop, window::{Window, WindowBuilder}};
 
-use crate::{AssetHandle, GameManager, MeshBuilder, WindowOptions};
+use crate::{Mesh, MeshBuilder, Shader, ShaderSource, GLSL};
 
 
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub enum ControlFlow
-{
-    Continue,
-    Exit,
-}
 
 #[derive(Clone, Copy)]
 pub enum WindowEvents
@@ -21,13 +16,6 @@ pub enum WindowEvents
 
 pub trait RenderAPI
 {
-    fn init_with_window(options : WindowOptions) -> Self;
-    fn take_control(self, manager : GameManager);
-
-    fn inject_systems(&self, manager : &mut GameManager);
-    
-    fn log_error(&self, message : &str);
-    fn log_debug(&self, message : &str);
-
-    fn create_mesh(&mut self, mesh_builder : MeshBuilder) -> AssetHandle;
+    fn create_mesh(&mut self, mesh_builder : MeshBuilder) -> Mesh;
+    fn create_program(&mut self, shader : &ShaderSource<GLSL>)  -> Shader;
 }

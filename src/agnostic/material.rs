@@ -20,14 +20,7 @@ use glium::{
 
 
 pub trait Material: Component + Sync + Send + Sized {
-    fn draw_glium(
-        &self,
-        context: &mut Frame,
-        transform: Option<&Transform>,
-        baked_camera: &BakedCameraInformation,
-        buffers: (&VertexBuffer<Vertex>, &IndexBuffer<u16>),
-        programs: &Assets<Program>,
-    ) -> Result<(), glium::DrawError>;
+    fn glsl() -> (&'static str, &'static str);
 }
 
 #[derive(Component, Clone)]
@@ -101,21 +94,6 @@ impl DefaultMaterial {
         *MATERIAL_SHADER_HANDLE.lock().unwrap() = Some(shaders.add_asset(program));
     }
 
-    pub(crate) fn startup(mut commands: Commands, query: Query<(Entity, &DefaultMaterial)>) {
-        for (entity, material) in query.iter() {
-            let material = Material {
-                material: material.clone(),
-            };
-
-            commands.entity(entity).remove::<DefaultMaterial>();
-            commands.entity(entity).insert(material);
-        }
-    }
-
-    pub fn clone_shader_handle() -> AssetHandle {
-        MATERIAL_SHADER_HANDLE.lock().unwrap().unwrap().clone()
-    }
-
     pub fn new(base_colour: Colour) -> DefaultMaterial {
         DefaultMaterial {
             base_colour,
@@ -123,15 +101,7 @@ impl DefaultMaterial {
         }
     }
 
-    pub fn default_component() -> Material<DefaultMaterial> {
-        Material {
-            material: DefaultMaterial::default(),
-        }
-    }
-}
-
-impl Material for DefaultMaterial {
-    fn draw_glium(
+    pub fn draw_glium(
         &self,
         context: &mut Frame,
         transform: Option<&Transform>,
@@ -157,5 +127,17 @@ impl Material for DefaultMaterial {
             },
             &OpenGL::default_draw_params(),
         )
+    }
+
+    // pub fn default_component() -> Material<DefaultMaterial> {
+    //     Material {
+    //         material: DefaultMaterial::default(),
+    //     }
+    // }
+}
+
+impl Material for DefaultMaterial {
+    fn glsl() -> (&'static str, &'static str) {
+        (Self::VS_SOURCE, Self::FS_SOURCE)
     }
 }

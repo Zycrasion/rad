@@ -1,4 +1,4 @@
-use std::marker::PhantomData;
+use std::{marker::PhantomData, sync::{mpsc::{channel, sync_channel, Receiver, Sender}, Arc}};
 
 use bevy_ecs::system::Resource;
 
@@ -8,14 +8,28 @@ use bevy_ecs::system::Resource;
 // It could use a garbage collector sorta thing, but I don't feel like that's the best way to fix it
 // I'll think about it.
 
-#[derive(Clone, Copy, Debug)]
-pub struct AssetHandle(u32, usize); // Index, Magic
+#[derive(Debug, Copy, Clone)]
+pub struct AssetHandle(u32, usize); // Magic, Inde
+
+enum AssetEventType
+{
+    Drop,
+    Clone
+}
+
+// Thanks Bevy for the idea
+struct AssetEvent
+{
+    magic : u32,
+    index : usize,
+    ty :  AssetEventType
+}
 
 #[derive(Resource)]
 pub struct Assets<T>
 {
-    assets : Vec<Option<(u32, T)>>,
-    magic : u32
+    assets : Vec<Option<(u32, T, u32)>>,
+    magic : u32,
 }
 
 impl<T> Assets<T>
@@ -25,7 +39,7 @@ impl<T> Assets<T>
         Self
         {
             assets: vec![],
-            magic : 0
+            magic : 0,
         }
     }
 
@@ -42,7 +56,7 @@ impl<T> Assets<T>
                     self.assets.len() - 1
                 })
         };
-        self.assets[index] = Some((self.magic, v));
+        self.assets[index] = Some((self.magic, v, 1));
         AssetHandle(self.magic, index)
     }
 
@@ -60,15 +74,25 @@ impl<T> Assets<T>
         Ok(())
     }
 
+    fn remove_asset_unchecked(&mut self, index : usize) -> Result<(), ()>
+    {
+        let asset = &mut self.assets[index];
+
+        *asset = None;
+
+        Ok(())
+    }
+
+
     /// Return type is wild
-    fn get_asset_raw_mut(&mut self, handle : &AssetHandle) -> Option<&mut Option<(u32, T)>>
+    fn get_asset_raw_mut(&mut self, handle : &AssetHandle) -> Option<&mut Option<(u32, T, u32)>>
     {
         let magic = handle.0;
         let index = handle.1;
 
         if let Some(asset_raw) = self.assets.get_mut(index)
         {
-            if let Some((asset_magic, asset)) = asset_raw
+            if let Some((asset_magic, asset, references)) = asset_raw
             {
                 if magic == *asset_magic
                 {
@@ -87,7 +111,7 @@ impl<T> Assets<T>
 
         if let Some(asset) = self.assets.get(index)
         {
-            if let Some((asset_magic, asset)) = asset
+            if let Some((asset_magic, asset, _)) = asset
             {
                 if magic == *asset_magic
                 {
@@ -106,7 +130,7 @@ impl<T> Assets<T>
 
         if let Some(asset) = self.assets.get_mut(index)
         {
-            if let Some((asset_magic, asset)) = asset
+            if let Some((asset_magic, asset, _)) = asset
             {
                 if magic == *asset_magic
                 {
@@ -117,4 +141,39 @@ impl<T> Assets<T>
         
         None
     }
+
+    // pub fn cleanup(&mut self)
+    // {
+    //     while let Ok(message) = self.reciever.try_recv()
+    //     {
+    //         let ty = message.ty;
+    //         let magic = message.magic;
+    //         let index = message.index;
+
+    //         match ty
+    //         {
+    //             AssetEventType::Drop => 
+    //             {
+    //                 let asset : &Option<_> = &self.assets[index];
+    //                 if asset.is_none()
+    //                 {
+    //                     continue;
+    //                 }
+    //                 self.assets[index].take();
+    //             },
+    //             AssetEventType::Clone => 
+    //             {
+    //                 let asset = &mut self.assets[index];
+    //                 if asset.is_none()
+    //                 {
+    //                     continue;
+    //                 }
+    //                 if let Some(asset) = asset
+    //                 {
+    //                     asset.2 += 1;
+    //                 }
+    //             },
+    //         }
+    //     }
+    // }
 }
